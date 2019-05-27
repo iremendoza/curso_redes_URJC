@@ -1,0 +1,121 @@
+---
+title: "Practica 3"
+author: "Irene Mendoza"
+date: "27 de mayo de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Diversidad Beta 
+
+Vamos a estimar la diversidad beta de especies e interacciones entre las 4 parcelas de estudio. 
+
+```{r pckgs, warning = F, message = F}
+library(betapart) 
+library(tidyverse)
+library(betalink)
+library(lubridate)
+
+```
+
+##Datos Sierra de Guadarrama
+
+```{r data.import}
+df<- read.table("List_interactions.txt",header=T, sep="\t") # http://dx.doi.org/10.5061/dryad.p869n (Lara-Romero et al. 2016).
+str(df)  #Echemos un vistazo a los datoslevels(df$Study.site)
+levels(df$Study.site)
+```
+
+
+Creamos una nueva variable para describir cada parcela de estudio
+
+```{r newvar}
+plot<-ifelse(df$Study.site=="nevero" & df$Habitat.type=="Encroached pasture","NE",ifelse(df$Study.site=="nevero" & df$Habitat.type=="Pasture","NP",ifelse(df$Study.site=="peñalara" & df$Habitat.type=="Encroached pasture","PE","PP") ))
+df<-cbind(df,plot) 
+
+```
+
+betapart.core estima los valores básicos necesarios para estimar las medidas de diversidad beta multi-sitio y por pares o directa.
+```{r matrizbinaria}
+m.insect.bin<-(table(df$plot,df$Insect)>0)*1
+
+(core<-betapart.core(m.insect.bin))
+
+(jac.m<-beta.multi(core, index.family="jac"))    #Comparación multi-sitio
+
+#Aproximación de Baselga
+
+m.insect.abun<-table(df$plot,df$Insect)
+(bma<-beta.multi.abund  (m.insect.abun, index.family="bray")) 
+
+(bpa<-beta.pair.abund (m.insect.abun, index.family="bray")) #Comparación directa
+```
+##Aproximación de Carvalho
+
+```{r download.pack}
+
+source("https://raw.githubusercontent.com/CarlosLaraR/R-ecology/master/Ecological_networks/Functions/Beta_diversity/beta.multi.carv")
+source("https://raw.githubusercontent.com/CarlosLaraR/R-ecology/master/Ecological_networks/Functions/Beta_diversity/carv.beta")
+
+(jac.p.carv<-carv.beta(m.insect.bin))
+(jac.m.carv<-beta.multi.carv(m.insect.bin))
+
+```
+##Paquete betalink
+```{r newvar2}
+
+interaction<-paste(df$Plant,df$Insect,sep="")
+df<-cbind(df,interaction) #Añadimos una nueva columna en nuestro arrego de datos que contiene la variable "interacción"
+
+df.pe<-subset(df,Study.site =="peñalara" & Habitat.type=="Encroached pasture" )
+df.pe<-droplevels(df.pe)
+df.pp<-subset(df,Study.site =="peñalara" & Habitat.type=="Pasture" )
+df.pp<-droplevels(df.pp)
+df.np<-subset(df,Study.site =="nevero" & Habitat.type=="Pasture" )
+df.np<-droplevels(df.np)
+df.ne<-subset(df,Study.site =="nevero" & Habitat.type=="Encroached pasture" )
+df.ne<-droplevels(df.ne)
+
+#creamos las matrices bipartitas para cada sitio de estudio
+m.int.pe<-(table(df.pe$Plant,df.pe$Insect)>0)*1
+m.int.pp<-(table(df.pp$Plant,df.pp$Insec)>0)*1
+m.int.np<-(table(df.np$Plant,df.np$Insec)>0)*1
+m.int.ne<-(table(df.ne$Plant,df.ne$Insec)>0)*1
+
+```
+```{r wrbetalink}
+#creamos  lista de redes
+
+list.redes = list(pe = m.int.pe, pp = m.int.pp, np = m.int.np, ne = m.int.ne)
+
+#La función “prepare_networks” del paquete betalink toma una lista de redes en forma de matriz y devuelve una lista de objetos igraph
+p.redes<-prepare_networks(list.redes)
+blink<- network_betadiversity (p.redes)
+blink
+
+
+```
+##Ejercicio 1
+
+Ejercicio 1: Utiliza los datos de interacciones de Guadarrama para estimar la diversidad beta de especies entre cada censo realizado en la localidad de Peñalara. Para ello, utiliza la aproximación multi-sitio y directa del paquete betapart. 
+ ¿Qué componente de la diversidad beta de especies es el más importante?
+¿Afecta la distancia entre censos a la diversidad beta? Para responder a la pregunta usa la información obtenida con la aproximación directa y representa la distancia entre censos frente a la diversidad beta de especies y su descomposición en los componentes de turnover y anidamiento. Ajusta un modelo lineal para comprobar la existencia de una relación lineal entre la distancia de censos y la disimilitud de especies y su descomposición.
+
+
+#Diversidad beta de especies entre cada censo de Peñalara
+Creamos una nueva variable que identifique cada censo
+
+```{r vardate} 
+#df1 <- df %>% mutate(doy = date(dmy(Date)))
+length(levels(df$Date))
+
+df1 <- df %>% dplyr::filter(Study.site == "peñalara") %>% mutate(doy = lubridate::yday(dmy(Date)))
+
+insect.censo <- table(df1$doy, df1$Insect)
+(bma<-beta.multi.abund(insect.censo, index.family="bray")) #Comparación multi-sitio
+(bpa<-beta.pair.abund (insect.censo, index.family="bray")) 
+```
+

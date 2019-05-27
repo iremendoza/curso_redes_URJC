@@ -1,0 +1,142 @@
+---
+title: "Practica curva acumulación especies"
+author: "Irene Mendoza"
+date: "27 de mayo de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 2.1. Introducción a las SACs
+Las curvas de acumulación de especies (SAC por sus siglas en inglés) se utilizan tradicionalmente para comparar datos de riqueza de especies obtenidos a nivel de comunidad utilizando funciones de acumulación.
+El método más utilizado aplica permutaciones aleatorias o submuestreo sin remplazo para obtener el valor medio de riqueza y su desviación estandard para cada unidad de esfuerzo de muestreo (Gotelli & Colwell 2001). Este método se encuentra implementado en el paquete vegan.
+Vamos a ver un ejemplo clásico utilizando datos de censo de especies arbóreas en la isla de Barro Colorado (BCI). Una vez estemos familiarizados con las funciones y las SACs veremos algunos ejemplos de aplicación en análisis de redes.
+Primero instalamos los paquetes que vamos a utilizar y cargamos los datos de BCI.
+
+
+```{r pckgs, warning = F, message = F}
+library(vegan) 
+library(fossil)
+library(tidyverse)
+
+data(BCI) #Conteos de 225 especies arbóreas en 50 parcelas de 1 Ha en BCI
+str(BCI)
+```
+
+```{r SPAC}
+sp1 <- specaccum(BCI, method="random", permutations=100) 
+str(sp1) 
+```
+##Representación gráfica
+La mejor manera para examinar las SACs es representar en una gráfica los valores de riqueza medios y su IC conforme acumulamos sitios muestreados.
+
+```{r SPACurve, fig.height= 6, fig.width=8}
+f.sp1 <- data.frame(sites = sp1$sites, richness = sp1$richness, sd = sp1$sd)
+str(f.sp1)
+
+par(mfcol=c(1,2), mar = c(4.1, 3.9, 2, 0.2))
+plot(sp1, ci.type="polygon",  col="black", lwd=2, ci.lty=2, ci.col="lightblue", ylab="Especies (N)")
+
+boxplot(sp1, col="yellow", pch="" )
+
+```
+
+
+## Species richness
+
+Podemos estimar el porcentaje de completitud del muestreo, que representea la proporción de especies estimada que hemos detectado con nuestro esfuerzo de muestreo.
+
+```{r Chao}
+est.richness<-fossil::chao2(BCI,taxa.row = FALSE)
+(complet<-ncol(BCI)*100/est.richness)
+
+```
+
+## Porcentaje de completitud
+
+Riqueza total esperada de especies
+
+```{r Chao2}
+est.richness<-fossil::chao2(BCI,taxa.row = FALSE)
+
+```
+
+## Working with sampling data
+```{r data.import}
+df<- read.table("List_interactions.txt",header=T, sep="\t") # http://dx.doi.org/10.5061/dryad.p869n (Lara-Romero et al. 2016).
+str(df)  #Echemos un vistazo a los datos
+```
+
+## Curvas de acumulación de especies con datos de campo
+
+```{r cucsumcampo}
+m.insect<-table(df$Date,df$Insect)  #Observaciones para cada censo y especie de polinizador
+m.plant<-table(df$Date,df$Plant)    #Observaciones para cada censo y especie de planta
+
+sp.insect <- specaccum(m.insect, method="random", permutations=100) 
+sp.plant <- specaccum(m.plant, method="random", permutations=100) 
+par(mfcol=c(1,2),mar=c(4.1, 3.9, 2, 0.2)) 
+plot(sp.plant, ci.type="polygon",  col="black", lwd=2, ci.lty=0, ci.col="lightblue",ylab="Especies (N)",  xlab="Censos", main="Plant species")
+plot(sp.insect, ci.type="polygon",  col="black", lwd=2, ci.lty=0, ci.col="lightblue",ylab="Especies (N)",  xlab="Censos", main="Animal species")
+
+
+```
+
+##Completitud de las curvas de acumulación de especies
+
+```{r completitud}
+est.richness.plant<-fossil::chao2(m.plant,taxa.row = FALSE) 
+est.richness.insect<-fossil::chao2(m.insect,taxa.row = FALSE)
+
+(complet<-ncol(m.plant)*100/est.richness.plant)
+(complet<-ncol(m.insect)*100/est.richness.insect)
+
+
+```
+
+##Interaction plots
+
+```{r interactions}
+interaction<-paste(df$Plant,df$Insect,sep="")
+df<-cbind(df,interaction)
+
+m.int<-table(df$Date,df$interaction)
+sp.int <- specaccum(m.int, method="random",permutations=100)
+plot(sp.int, ci.type="poly",  col="black", lwd=2, ci.lty=0, ci.col="lightblue",xlab="Censos (N)",  ylab="Interacciones (N)")
+(est.richness<-fossil::chao2(m.int,taxa.row = FALSE))  
+(complet<-ncol(m.int)*100/est.richness)    #52%
+
+```
+```{r comparasion}
+df.enc<- subset(df,Habitat.type == "Encroached pasture")
+df.pas<-subset(df,Habitat.type =="Pasture")
+m.enc<-table(df.enc$id,df.enc$Insect)
+m.pas<-table(df.pas$id,df.pas$Insect)
+encroached<-specaccum (m.enc, method="random",permutations=100)
+pasture <- specaccum(m.pas, method="random",permutations=100)
+(raremax <- nrow(m.pas))
+
+plot(encroached, ci.type="line",  col="black", lwd=2, ci.lty=1,  xlab="Visitas (N)", ylab="Especies (N)", ylim=c(0,130))
+plot(pasture, ci.type="line",  col="black", lwd=2, ci.lty=2,  xlab="Visitas (N)", ylab=" Especies (N)", main="Pastures", ylim=c(0,130),add=TRUE)
+
+
+```
+
+```{r CI}
+f_t<-function(mean1, mean2, sd1, sd2){
+
+t=(mean1-mean2)/ sqrt((sd1+sd2))
+sig= ifelse (t>1.96,"sig","ns")
+return(c(t,sig))
+} 
+rare.enc<-encroached$richness[raremax] #Riqueza en los pastos matorralizados cuando igualamos el esfuerzo de muestreo.
+rare.pas<-pasture$richness[raremax]     #Riqueza en los pastos  cuando igualamos el esfuerzo de muestreo.
+  nrow(m.pas)
+
+
+f_t(mean1=rare.enc, mean2=rare.pas, sd1=encroached$sd[raremax], sd2=pasture$sd[raremax])
+
+```
+
