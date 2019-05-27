@@ -42,3 +42,32 @@ Carlos Lara, tesis URJC, demografía plantas de alta montaña y adaptación cambio 
 
 
 Javier Galeano y Javier García-Alcarra
+
+#### INTRODUCCIÓN REDES ECOLÓGICAS.
+
+
+
+Arquitectura de la red da información flujos materia y energía, y capacidad de recuperación frente a las perturbaciones
+
+Nodes (vértices) y edges (links)
+
+¿Qué probabilidad tiene cada nodo de establecer conexiones con otros nodos?
+En los años 60, se creían que las redes eran aleatorias. 
+Distribución de grado = distribución de probabilidad de un grado en la red (grado = número de interacciones en la red)
+Redes aleatorias: casi todos los nodos de la red tienen el mismo número de interacciones
+No es real, infraestima los nodos con bajo valor de grado
+
+A partir de Bárbasi y Albert 1999, se entiende que las redes siguen un modelo libre de escala. UNas pocias especies tienen un grado muy alto y muchas tienen un grado bajo. Distribución de grado que sigue una ley de potencia.
+
+Watts y Strogatz, 1998, sociedad humana, seis grados de separación. Milgram 1967. Psychology Today.
+
+Gómez y Verdú. 2017.
+
+Castro-Urgal et al. 2012. Basic Appl Ecology
+
+Vázquez et al. 2009. Annals of Botany
+Neutralidad (abundancia, por ejemplo): la frecuencia de interacciones depende de la abundancia
+Redes grandes: poca conectancia
+Redes pequeñas: mucha conectancia
+
+ERGM: exponential random graphs models
