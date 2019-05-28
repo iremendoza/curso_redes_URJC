@@ -71,3 +71,143 @@ Redes grandes: poca conectancia
 Redes pequeñas: mucha conectancia
 
 ERGM: exponential random graphs models
+
+####
+JAVIER GALEANO
+@galeanojav
+
+Sistemas complejos: comportamiento emergente -> las propiedades que emergen son más que la suma de las partes
+Para un físico, una vaca es una espera (abstracción) y luego, se hacen simulaciones numéricas
+
+Un grafo es un par de conjunto: un conjunto es nodos, y el otro, enlaces.
+
+Físicos: nodes and links
+Matemáticos: vertices and edges
+Graph theory: 1763 por Eulen. En Konisberg había muchos puentes, se preguntaron si podían pasar de un punto al otro de la ciudad sin pasar por el mismo puente. Si se tiene un número impar de enlaces, no se puede hacer un círculo euleriano (ir de la entrada al mismo punto de partida sin repetir enlaces).
+
+Erdos y Rényi, los primeros en hacer un modelo matemático de redes (random graph). Todos los nodos tienen la misma probabilidad de enlaces -> modelos nulos
+
+Grado = número de enlaces que tiene un nodo -> se puede ver la distribución de grado de todos los nodos de la red
+Grado medio = es el promedio de los grados de una red
+
+El valor medio no da información sin saber la distribución
+
+La distribución de grado de una red aleatoria es una Poisson
+
+
+Hay redes entangled: se intenta que todos los nodos tengan el mismo grado, con una distribución delta.
+
+Small world, experimento de Milgram. 
+
+El número de Erdös (1913-1996); 1475 artículos con 493 coautores
+
+MathSciNet
+
+Oracle of Bacon
+
+Natalie Portman: Erdos-Bacon number = 7
+
+Lij es la longitud de paso, cuántos enlaces hay entre los nodos i y j.
+
+Longitud de paso característica de un grafo es el promedio de todas las longitudes características para cada posible par de nodos. 
+
+Las redes con valor pequeño de L se dicen que tienen la propiedad de Small World: y también tienen bastante clustering
+
+Food web: enlaces dirigidos
+
+El grupo de nodos es lo que define si una red es one mode o two modes. Bipartita: cada subconjunto de nodos no puede tener enlace entre ellos. 
+Two-mode: dos subconjuntos de nodos bien definidos y nunca hay enlaces entre los nodos del 
+mismo tipo.
+
+En las food webs, normalmente hay enlaces dirigidos. 
+
+Enlaces con peso dan mucha más información que si no tienes enlaces con peso. El comportamiento de la red pesada es diferente al de la red no pesada, es una sobresimplificación. 
+
+Recomendación: hacer nosotros las métricas
+
+In-degree; grado de entrada
+Out-degree: grado de salida
+
+El peso sirve para el enlace: número de visitas, frecuencia de visitas, etc, No habla del nodo. Si se quiere saber algo del nodo, hay que medir el strength (suma del peso, sumas parciales). Barrat et al. PNAS, 2004.
+El core de la red bipartita es mucho más pesada de lo que corresponde al resto de los nodos. 
+
+Distribución del strength en función del grado, ley de potencia (si es uno, significa que la red es aleatoria). En las redes biológicas, el exponente es mayor que 1 normalmente. Eso significa que los nodos que son hub, además tienen un número mayor de visitas. 
+
+Modelos basados en agentes: cada agente tiene un rol (pej. rol de depredador y rol de presa). Cada rol tiene unas determinadas propiedades. Presas con difusión browiana. Los depredadores tienen un movimiento Levy fly.
+
+Cadena trófica: quién se come a quién.
+
+La flecha va de la presa al depredador: por transmisión de la energía. 
+
+Los nodos en la food web pueden ser especies o grupos funcionales de especies. 
+
+Foodweb3D. Jennifer Dunhe y Leo Martínez. Peace Lab. 
+
+paquete de R en food web.
+
+Enlaces basales: no son depredadores de nada
+Top: no son predados por nadie
+Medios: tienen los dos tipos
+
+Elton: food cyclesç
+Odum: Food web
+Neo Martinez: 1991 food web for Little Rock Lke
+
+Gephi: filtro temporal de la red
+
+Fracción de especies que son depredadores y fracción de especies que son presas.
+
+Conectancia: número de posibles enlaces que se dan a cabo en la red. Los modelos aleatorios tienen la misma conectancia. 
+
+Nivel trófico: número de enlaces dirigidos que nos separan del ambiente.
+
+Predator-prey ratio 3/4. De cada 4 nodos, tres corresponden a depredadores. 
+
+Links density: d = L/S (no muy útil)
+
+Conectancia: Con canibalismo (C = l/S^2)
+Sin canibalismo: C = L/S(S-1)/2
+
+
+
+
+A ratio of prey to predators of 3/4 (food web properties were scale-invariant)
+
+Lo interesante de las redes biológicas es que son heterogéneas: especies muy conectadas y especies poco conectadas. Son sistemas más resistentes que si fueran incluso una red de potencia. 
+
+Las proporciones de basales, intermedios y top son generalmente bastante constantes. 
+
+Las interacciones tmabién tienen leyes de escala. 
+
+En las food webs no hay ciclos, no hay transitividad. 
+
+La relación entre S y L parece que es libre de escala (recta en escala log log).
+
+Hay que poner cómo es la distribución de grado y aceptar si es exponencial, ley de potencia, etc...
+
+La distribución de grado siempre es heterogénea. 
+
+Local clustering coefficient. Las food web tienen un clustering muy bajo (no son redes de mundo pequeño). 
+
+Motif: estructura de enlace que tienen los nodos. 
+
+Prácticamente todas las food webs tenían una ley libre de escala universal.
+
+Niche model:
+Feeding range: todo lo que puedes comerte
+Las especies se distribuyen aleatoriamente entre 0 y 1. 
+Distribución beta para ver el rango de lo que se puede comer. 
+
+Jane Dunne -> revisión en food webs. 
+
+A medida que se añaden especies, aumenta la conectividad. Es una transición de fases. 
+
+k-shell method. Se van separando los nodos con grado 1, luego con grado 2, etc.
+4-crust: grado 4 o menor
+5-core: 5 o más grados
+
+Un nodo que esté en el core de la red es más importante que otro nodo que esté en la corteza, aunque tenga menor grado. 
+
+Distancia de mínimo coste (least-cost path): no había mucha diferencia las líneas rectas del least-cost path. 
+
+Trabajo de Miguel Fortuna con distancias umbrales. 
