@@ -1,0 +1,191 @@
+---
+title: "Practica5"
+author: "Irene Mendoza"
+date: "29 de mayo de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###MÉTRICAS A NIVEL DE RED Y ESPECIE
+Vamos a utilizar el paquete bipartite para estimar las principales métricas a nivel de red y especie
+
+```{r pckgs, warning = F, message = F}
+library(bipartite)
+library(tidyverse)
+```
+
+```##Datos Sierra de Guadarrama
+
+```{r data.import}
+df<- read.table("List_interactions.txt",header=T, sep="\t") # http://dx.doi.org/10.5061/dryad.p869n (Lara-Romero et al. 2016).
+str(df)  #Echemos un vistazo a los datoslevels(df$Study.site)
+levels(df$Study.site)
+```
+Vamos a utilizar la red de pasto de la localidad del Nevero para crear una matriz bipartita
+
+```{r neveroselc}
+
+df.nev <- df %>% filter(Habitat.type == "Pasture", Study.site == "nevero") %>% droplevels()
+web = matrix(table(df.nev$Plant, df.nev$Insect), nrow = length(levels(df.nev$Plant)), ncol = length(levels(df.nev$Insect)))
+
+rownames(web) = levels(df.nev$Plant)
+colnames(web) = levels(df.nev$Insect)
+```
+
+Dibujamos la red bimodal o bipartita. Si escogemos method = “normal”, el orden de las especies de la matriz se mantendrá en el dibujo de la red. Tanto el grosor de las cajas como el de las interacciones son proporcionales al número de visitas.
+
+```{r bipartiteplot, fig.height = 8, fig.width = 10}
+par(mfrow = c(1, 1))
+plotweb(web, method ="normal")
+visweb(web,type="nested")
+
+```
+#Cálculo de métricas
+```{r metnet}
+(n = networklevel(web, index=c("connectance", "weighted connectance", "linkage density", "H2","Shannon diversity","interaction evenness")))
+
+(wnodf = networklevel(web, index= "weighted NODF"))
+nested(web, method = "ALL")
+
+```
+
+##MODELOS NULOS
+Para responder esta pregunta vamos calcular el "z-score" respecto a 100 matrices nulas cuantitativas. Fijaremos el valor de α en 0.05 por lo que el umbral para Z será 1.96.
+
+```{r nullmodel}
+nulls <- nullmodel(web, N = 1000, method = "r2d") #este modelo nulo mantiene las filas y columnas y las sumas marginales
+WNODFnull <- sapply(nulls, networklevel, index= "weighted NODF")
+WNODFobs <- wnodf
+
+(z=(WNODFobs-mean(WNODFnull))/sd(WNODFnull)) #no es anidada porque Z < 1.96
+
+
+
+```
+##MODULARIDAD
+Calculamos el valor de modularidad con la función computeModules del paquete bipartite. Esta función utiliza el algoritmo QuanBiMod. Si se introducen datos cuantitativos el resultado es una modularidad bipartita cuantitativa y si se introducen datos cualitativos el resultado es una modularidad bipartita cualitativa.
+
+```{r modularity}
+modreal = computeModules(web=web, method="Beckett", steps = 1E8, tolerance = 1e-10, experimental = FALSE, forceLPA=FALSE)
+str(modreal)
+modreal@likelihood #hay que correr la web con modreal varias veces y coger el valor máximo, se da el valor de Q máxima
+
+```
+Como la modularidad puede ser variable, es aconsejable utilizar la función metaComputeModules, que repite el número de veces deseado el algoritmo QuanBiMod y devuelve la mayor Q de todas las repeticiones, es decir, la configuración de módulos que maximiza el número de conexiones dentro del propio módulo y minimiza el número de conexiones fuera del propio módulo. La variabilidad no es igual para todas las redes.
+
+```{r modulesQ}
+modreal_max = metaComputeModules(moduleObject=web, N = 10, method="Beckett", steps = 1E8, tolerance = 1e-10, experimental = FALSE, forceLPA=FALSE) #N=5 lo utilizamos como ejemplo en esta práctica para que no tarde demasiado. Por supuesto, el número de repeticiones necesario depende de la red
+
+modreal_max@likelihood
+```
+
+#Modelos nulos de modularidad
+```{r nullmodularity, eval = F}
+nulls <- nullmodel(web, N=100, method="r2d")
+modnull_max <- sapply(nulls, metaComputeModules, N = 5, method="Beckett", steps = 1E8, tolerance = 1e-10, experimental = FALSE, forceLPA=FALSE) #N=5 lo utilizamos como ejemplo en esta práctica para que no tarde demasiado. Por supuesto, el número de repeticiones necesario depende de la red
+like.nulls <- sapply(modnull_max, function(x) x@likelihood)
+Qobs = modreal_max@likelihood
+Qnull = (like.nulls)
+print(z=(Qobs-mean(Qnull))/sd(Qnull)) #es significativo
+```
+A continuación, exploramos la composición de los módulos ¿Cuántos módulos ha detectado el análisis de modularidad
+
+```{r modeldesign, fig.height = 4, fig.width = 10}
+
+printoutModuleInformation(modreal_max)
+plotModuleWeb(modreal_max) #Sobre la matriz cuantitativa
+plotModuleWeb(modreal_max, weighted=F) #Sobre la matriz cualitativa (pero la conformación de modulos se basó en información cuantitativa)
+
+```
+##ROBUSTEZ: Evaluación de la robustez ante la extinción acumulada de especies
+
+En primer lugar estimaremos la robustez ante tres secuencias diferentes de extinción de animales (“higher trophic level”). Para ello calculamos el número de especies de plantas que se desconectan (supuestamente se extinguen al quedarse desconectadas) cada vez que se extingue un animal.
+Las tres secuencias que generaremos son: (1) “RAND.H”“, extinción primaria de animales en orden aleatorio; (2) ”ABUN.H“, extinción primaria de animales de menor a mayor número de interacciones; y (3) ”DEG.H“, extinción primaria de animales de mayor a menor número de interacciones. Para simular estas secuencias de extinción, utilizaremos la función second.extinct del paquete bipartite. Esta función da como resultado una tabla con tantas filas como especies en el grupo de las extinciones primarias (en este primer caso, número de especies de animales) y tres columnas.
+●	La primera columna indica el número de extinciones primarias acumuladas y coincide con el número de pasos en la secuencia de extinción.
+●	La segunda columna indica el número de extinciones de plantas que se producen justo en ese paso de la secuencia de extinción (es un promedio de los resultados obtenidos a través del número de repeticiones que simulemos la secuencia de extinción).
+●	La tercera columna indica el número de extinciones de animales que se producen justo en ese paso de la secuencia de extinción (también es un promedio). Cuando la extinción primaria es de animales, la tercera columna sólo contiene unos mientras que cuando la extinción primaria es de plantas, es la segunda columna la que sólo contiene unos.
+Observa que el método de menor a mayor número de interacciones no permite promediar el número de extinciones secundarias. Si se quiere promediar esta secuencia, se tienen que hacer por cuenta propia las repeticiones y promedios necesarios.
+
+La función robustness calcula el área bajo las curvas de extinción. Completamos la tabla anterior con los valores de robustez. Cuanto mayor es el área bajo la curva de extinción, mayor es la robustez.
+
+La función slope.bipartite fija una función hiperbólica a la curva de extinción y devuelve el exponente de dicha función. Esta misma función permite dibujar la curva de extinción. Terminamos de rellenar la tabla y dibujamos las secuencias de extinción ¿En que casos la red muestra mayor y menor robustez?
+
+```{r robustness}
+par(mfrow = c(2, 3), mar = c(3,2,2,2))
+
+RAND.H = second.extinct(web, participant = "higher", method = "random", nrep = 10, details = FALSE, ext.row=NULL, ext.col=NULL)
+ABUN.H = second.extinct(web, participant = "higher", method = "abun", details = FALSE, ext.row=NULL, ext.col=NULL) ##se extinguen de menos a más abundante, habría que repetirlo diez veces y te da luego el promedio
+DEG.H=second.extinct(web, participant = "higher", method = "degree", nrep = 10, details = FALSE, ext.row=NULL, ext.col=NULL) #se extinguen de más abundantes a menos. 
+
+#Robustez animales
+RAND.L=second.extinct(web, participant = "lower", method = "random", nrep = 100, details = FALSE, ext.row=NULL, ext.col=NULL)
+ABUN.L=second.extinct(web, participant = "lower", method = "abun", details = FALSE, ext.row=NULL, ext.col=NULL)
+DEG.L=second.extinct(web, participant = "lower", method = "degree", nrep = 100, details = FALSE, ext.row=NULL, ext.col=NULL)
+
+ROBUSTNESS = as.data.frame(matrix(NA,nrow=6,ncol=2))
+rownames(ROBUSTNESS)=c("Abun_animals","Deg_animals","Rand_animals","Abun_plants","Deg_plants","Rand_plants")
+colnames(ROBUSTNESS)=c("Area","Slope")
+
+ROBUSTNESS$Area=c(robustness(ABUN.H),robustness(DEG.H),robustness(RAND.H),robustness(ABUN.L),robustness(DEG.L),robustness(RAND.L))
+
+ROBUSTNESS$Slope=c(slope.bipartite(ABUN.H, main  = "ABUN.H"),slope.bipartite(DEG.H),slope.bipartite(RAND.H),slope.bipartite(ABUN.L),slope.bipartite(DEG.L),slope.bipartite(RAND.L))
+
+```
+```{r plotrobustness, fig.height = 8, fig.width= 10}
+
+x=RAND.L[,1]
+y=RAND.L[,3]
+x2=x/nrow(web)
+y2=(sum(y) - cumsum(y))/sum(y)
+
+plot((x2*100), (y2*100), xlim=c(0,100), ylim=c(0,100), ylab="Animals present (%)",xlab= "Plant extinction (%)",bty="n",cex=1.5,cex.lab=1.5)
+
+```
+
+##CÁLCULO DEL GRADO DE ESPECIALIZACIÓN DE LAS ESPECIES
+
+```{r specialization}
+s = specieslevel(web, index=c("degree","species strength","normalised degree","d","betweenness","closeness", "PSI"))
+
+#¿cuáles son las especies de insectos más generalistas?
+rownames(s$"higher level")[which(s$"higher level"$degree==max(s$"higher level"$degree))]
+rownames(s$"higher level")[which(s$"higher level"$species.strength==max(s$"higher level"$species.strength))]
+rownames(s$"higher level")[which(s$"higher level"$betweenness==max(s$"higher level"$betweenness))]
+rownames(s$"higher level")[which(s$"higher level"$weighted.betweenness==max(s$"higher level"$weighted.betweenness))]
+rownames(s$"higher level")[which(s$"higher level"$weighted.closeness==max(s$"higher level"$weighted.closeness))]
+rownames(s$"higher level")[which(s$"higher level"$d==min(s$"higher level"$d))]
+
+```
+##CLASIFICACIÓN DE LAS ESPECIES
+
+```{r node.classification}
+czlower = czvalues(modreal_max, level="lower", weighted=TRUE)   
+czhigher = czvalues(modreal_max, level="higher", weighted= TRUE)
+
+NASlower.z=names(czlower$z)[which(is.na(czlower$z)==TRUE)]
+NAShigher.z=names(czhigher$z)[which(is.na(czhigher$z)==TRUE)]
+
+czlower$z[NASlower.z]=0
+
+```
+
+####REPARTO REDES####
+
+```{r myexample}
+di <- read.delim(file = "M_SD_023.txt") 
+
+S <- sum(as.numeric(dim(di)))
+
+vals = networklevel(di, index=c("connectance", "weighted NODF", "H2"))
+
+modreal_max_di = metaComputeModules(moduleObject = di, N = 10, method="Beckett", steps = 1E8, tolerance = 1e-10, experimental = FALSE, forceLPA=FALSE)
+
+Q <- modreal@likelihood
+
+M_SD_023 <- data.frame(S, C = as.numeric(vals[1]), NODF = as.numeric(vals[2]), H2= as.numeric(vals[3]), Q)
+
+```
+
