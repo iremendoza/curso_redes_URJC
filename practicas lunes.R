@@ -67,3 +67,9 @@ barplot(rowinteractions[order(rowinteractions,decreasing=T)],las=2,main="Plant i
 barplot(colinteractions[order(colinteractions,decreasing=T)],las=2,main="Animal interactions")
 barplot(rowvisits[order(rowvisits,decreasing=T)],las=2,main="Plant visits")
 barplot(colvisits[order(colvisits,decreasing=T)],las=2,main="Animal visits")
+
+###FOOD WEBS###
+
+library(foodweb)
+data(moss)
+write.csv(moss, file = "moss.csv", sep = ",", col.names = "F")
