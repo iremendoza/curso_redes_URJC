@@ -149,7 +149,7 @@ Enlaces basales: no son depredadores de nada
 Top: no son predados por nadie
 Medios: tienen los dos tipos
 
-Elton: food cyclesç
+Elton: food cycles
 Odum: Food web
 Neo Martinez: 1991 food web for Little Rock Lke
 
@@ -211,3 +211,59 @@ Un nodo que esté en el core de la red es más importante que otro nodo que esté e
 Distancia de mínimo coste (least-cost path): no había mucha diferencia las líneas rectas del least-cost path. 
 
 Trabajo de Miguel Fortuna con distancias umbrales. 
+
+Meterle dinámica de poblaciones en la red. 
+
+Sin evolución temporal, no puedes predecir. 
+
+Gephi: representación redes espaciales
+
+Cheddar: paquete de R
+
+Cytoscape: for temporal analysis
+
+
+####Javier  Garcia-Algarra####
+
+Cómo definimos la centralidad? NO es nada banal definirla. Hay dos clases de nodos. 
+
+k-radius: media de la distancia de una especie a todas las de k-core máximo del otro enlace. 
+
+k-degree:dividimos la inversa de los k-radius de todas las especies vecinas en términos topológicos. 
+
+Cuanto más alto es el k-degree, más central es.
+
+Bipartite debería representar la superficie del enlace como raiz cuadrada. 
+
+Componente gigante: falta algún enlace, porque parece que no tiene relación con el resto de la red.
+
+BipartGraph
+
+github
+
+Polar sirve para las redes muy grandes. Polar sirve porque es bastante libre de escala, con lo que se puede usar para comparar redes. 
+
+###Miércoles 29/05/2019
+
+Silvia Santamaría
+
+Componente gigante: conjunto de la red más conectado
+ Ventajes: vemos a la vez, nodos, enlaces y la arquitectura de la red.
+Cautelas: hay que escoger bien las métricas
+
+Estructura de la red: Asimetría positiva: domina el nivel trófico superior
+
+Las redes biológicas tienen una distribución de grado que no sigue una distribución normal, sino potencia, potencia truncada, etc... Jordano et al. 2003. Ecology Letters. 
+
+Anidamiento en biogeografía de islas: los hábitats más pobres son subconjuntos perfectos de los hábitats más ricos. 
+
+WINE: distancia a la isoclina cuantitativa
+WNODF: solapamiento para cuantitativa. Le importa mucho la identidad de las espcies.
+
+beta-diversidad también tiene métricas de anidamiento (Carvalho et al.)
+
+Modularidad: subconjuntos de especies que están más conectados entre sí que con otros nodos de otros módulos. 
+
+¿Qué perturbación tengo que hacer para quedarme con la mitad de mi red?
+
+Hay problemas con la z = 0 (conectividad dentro de módulo), cuando en un módulo hay solo 1 nodo de un nivel. No hay una metodología establecida de los valores de z y c que sean vállidos. 
