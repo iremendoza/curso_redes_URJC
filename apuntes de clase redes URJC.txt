@@ -267,3 +267,19 @@ Modularidad: subconjuntos de especies que están más conectados entre sí que con 
 ¿Qué perturbación tengo que hacer para quedarme con la mitad de mi red?
 
 Hay problemas con la z = 0 (conectividad dentro de módulo), cuando en un módulo hay solo 1 nodo de un nivel. No hay una metodología establecida de los valores de z y c que sean vállidos. 
+
+###Jueves 30 de mayo####
+
+##MODELOS NULOS###
+
+Modelos deterministas fijo-fijo: fija las filas y las columnas. La suma de las filas y columnas se mantiene fija. 
+
+Modelos probabilísticos: no fijan las sumas marginales de filas y columnas, sino que dan una probabilidad de ocupación. Equiprobable-equiprobable: una probabilidad igual de ocupación de filas y columnas. 
+
+Modelos nulos hechos con anidamiento. Los modelos fijo-fijo producen mucho error tipo 2. 
+
+r2dtable: fija filas y columnas, pero no la conectancia
+vazquez: sí fija conectancia, pero no filas y columnas
+
+#### ANNA TRAVESET###
+
