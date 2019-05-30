@@ -1,0 +1,148 @@
+---
+title: "Practica6"
+author: "Irene Mendoza"
+date: "30 de mayo de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r pckgs, warning = F, message = F}
+library(bipartite) 
+library(tidyverse)
+```
+
+###MODELOS NULOS###
+
+Un modelos nulo, en el contexto del análisis de redes, es una aleatorización de la matriz observada que excluye deliberadamente el proceso que queremos testar. Usaremos los modelos nulos como umbral para estimar la significación de las métricas de red y para comparar diferentes redes.
+
+```{r safariland}
+web <- Safariland
+sum(web)
+str(web)
+(V <- sum(web != 0))
+(C=sum(web!=0)/length(web)) #conectancia
+(filas = length(which(rowSums(web)!=0)))
+(columnas = length(which(colSums(web)!=0)))
+
+binary.web <- web
+binary.web[which(web!=0)]=1
+```
+Creamos 1000 matrices nulas cualitativas (binarias) del tipo "r00". Este modelo nulo produce matrices "muy nulas" porque no conservan los totales ni de las filas ni de las columnas. También se llama modelo equiprobable-equiprobable, dado que todas las filas y todas las columnas tienen la misma probabilidad de ser ocupadas por unos. Cuando la conectancia de la matriz real es baja, el número de filas y columnas de la matriz nula generada puede reducirse, al no ocuparse todas las filas o todas las columnas.
+
+```{r r00}
+nm.r00 = vegan::nullmodel(binary.web, method="r00") 
+sm.r00 = simulate(nm.r00, nsim=1000)
+
+null.r00=sm.r00[,,1]  #seleccionamos una de las 1000 matrices generadas al azar
+(C = networklevel(null.r00, index = "connectance")) #la conectancia cambia porque las filas o columnas con todo 0, no deberían incluirse en el cálculo de conectancia
+length(which(rowSums(null.r00)!=0))
+length(which(colSums(null.r00)!=0))
+```
+A continuación, crearemos 1000 matrices nulas cualitativas “menos nulas” y, por tanto, más parecidas a las matrices reales. Utilizamos el método t.swap, que utiliza el tipo de algoritmo “trial swap” para generar matrices cualitativas que conservan el número de filas, columnas, interacciones, conectancia y, además, los mismos totales de filas y de columnas que la matriz real de referencia. Por esta última característica es un tipo de modelo nulo fijo-fijo. Se trata de un modelo conservador.
+
+```{r trial.swap}
+nm.tswap <- vegan::nullmodel(binary.web, method="tswap") 
+sm.tswap <- simulate(nm.tswap, nsim=1000)
+
+null.tswap <- sm.tswap[,,1]
+sum(null.tswap)
+(C=sum(null.tswap!=0)/length(null.tswap))
+length(which(rowSums(null.tswap)!=0))
+length(which(colSums(null.tswap)!=0))
+```
+Para generar el siguiente modelo nulo vamos a utilizar la función mgen de bipartite, que permite determinar el número de filas, el número de columnas, el número de interacciones (por tanto, la conectancia) y la probabilidad de ocupación de cada fila y de cada columna. Si en lugar de keep.species=TRUE se escoge keep.species=FALSE, el número de filas y de columnas no quedará fijado y es posible que se pierda alguna fila o columna para la que se haya asignado una probabilidad de ocupación baja. En nuestro caso sí vamos a conservar las dimensiones de la matriz real, así como su número de interacciones. Las probabilidades de ocupación de cada celda vendrán dadas por el promedio del llenado de la fila y la columna. Se trata de un modelo intermedio entre el equiprobable-equiprobable y el fijo-fijo, conocido como proporcional-proporcional. En primer lugar calculamos el número de interacciones de la red real y las sumas de columnas y de filas de la matriz binaria.
+
+```{r mgen}
+colsums = colSums(binary.web)
+rowsums = rowSums(binary.web)
+Pcolsums = colSums(binary.web)/length(colsums) #Calculamos la probabilidad de ocupación de cada columna, proporcional al llenado de dicha columna
+
+Prowsums = rowSums(binary.web)/length(rowsums) #Calculamos la probabilidad de ocupación de cada fila, proporcional al llenado de dicha fila
+
+P_mat = matrix(NA, nrow = length(rowsums), ncol = length(colsums)) 
+for(j in c(1:length(Pcolsums))){   #de 1 a n siendo n el número de columnas
+for(k in c(1:length(Prowsums))){   #de 1 a n siendo n el número de filas
+P_mat[k,j] = mean(c(Pcolsums[j],Prowsums[k]))  #rellenamos la celda con el promedio de las probabilidades de ocupación de fila y columna
+}}
+P_mat9 = round(P_mat,digits=9)       #(*) 
+P_mat_sum1 = (P_mat9)/(sum(P_mat9))  #P_mat_sum1 suma 1
+
+#(*) Es necesario redondear para que mgen no de error porque de lo contrario, como R no opera con más de 9 dígitos, la suma de la matriz de probabilidad nunca sería exactamente igual a 1
+
+null.mgen=mgen(P_mat_sum1, n= sum(binary.web), keep.species=TRUE, rep.cell=FALSE)
+sum(null.mgen)
+sum(null.mgen!=0)
+(C=sum(null.mgen!=0)/length(null.mgen))
+length(which(rowSums(null.mgen)!=0))
+length(which(colSums(null.mgen)!=0))
+
+```
+## Simulación de matrices nulas cuantitativas
+Pasamos a simular modelos nulos cuantitativos. En este caso, en lugar de presencia-ausencia, las celdas indicarán la frecuencia de interacción. Se trata de una complicación adicional para la construcción del modelo nulo ya que ahora, además de decidir la probabilidad de ocupación de la celda, tendremos que decidir cómo se distribuyen los registros entre las celdas de la matriz.
+Estos modelos nulos son importantes para intentar responder si algunas interacciones ocurren con mayor o menor frecuencia de lo esperado por azar. Son especialmente interesantes cuando nos preguntamos si ciertas interacciones son más o menos frecuentes de lo esperado para las abundancias de especies observadas. En estos casos lo ideal es utilizar abundancias de especies independientes para calcular la frecuencia esperada para cada interacción (a modo de tabla de contingencia). Como rara vez se dispone de información independiente de las abundancias de las especies, se suele utilizar los totales de las filas y las columnas de la matriz cuantitativa. Esta solución asume que la participación en la red es proporcional a la abundancia, lo cual en ocasiones puede ser realista (por ejemplo para la abundancia de especies muy ligadas a su hospedador como algunos parásitos) pero no está exento de cierto grado de razonamiento circular.
+Dos implementaciones muy utilizadas de este tipo de modelos nulos son el algoritmo de Paterfield (r2d) y el algoritmo de Vázquez et al. 2007 (vaznull). 
+Generamos 1000 matrices nulas con el algoritmo de Paterfield.
+
+```{r Paterfield}
+
+nm.r2d = vegan::nullmodel(web, method="r2d")
+sm.r2d = simulate(nm.r2d, nsim=1000)
+
+null.r2d <- sm.r2d[,,1]
+sum(null.r2d!=0)
+(C=sum(null.r2d!=0)/length(null.r2d))
+
+```
+Algoritmo de Vázquez (solo implementado en vegan)
+```{r vazquez}
+null.vaznull=vaznull(1000,web) 
+
+sum(null.vaznull[[1]])
+
+sum(null.vaznull[[1]]!=0)
+
+(C=sum(null.vaznull[[1]]!=0)/length(null.vaznull[[1]]))
+length(which(rowSums(null.vaznull[[1]])!=0))
+length(which(colSums(null.vaznull[[1]])!=0))
+```
+
+Evaluación del anidamiento con cada uno de los modelos nulos anteriores.
+
+```{r zscores.r00}
+nm.r00 = vegan::nullmodel(binary.web, method="r00") 
+sm.r00 =simulate(nm.r00,nsim=1000)
+
+NODFnull.r00 = vector()
+
+for (i in c(1:1000)){ 
+NODFnull.r00[i]= as.numeric(nestednodf(sm.r00[,,i])$statistic[3])}
+#NODFnull.r00 = as.numeric(NODFnull.r00)
+
+(NODFobs = as.numeric(nestednodf(binary.web)$statistic[3]))#Valor observado
+
+(z=(NODFobs-mean(NODFnull.r00))/sd(NODFnull.r00)) #z-score
+
+```
+```{r zscores.tswap}
+nm.tswap <- vegan::nullmodel(binary.web, method="tswap") 
+sm.tswap <- simulate(nm.tswap, nsim=1000)
+
+NODFnull.tswap = vector()
+
+for (i in c(1:1000)){ 
+NODFnull.tswap[i]= as.numeric(nestednodf(sm.tswap[,,i])$statistic[3])}
+#NODFnull.r00 = as.numeric(NODFnull.r00)
+
+(NODFobs = as.numeric(nestednodf(binary.web)$statistic[3]))#Valor observado
+
+(z=(NODFobs-mean(NODFnull.tswap))/sd(NODFnull.tswap)) #z-score
+
+```
+
+```
+
+NO está terminada. Faltaría meterle los z-scores.
+
