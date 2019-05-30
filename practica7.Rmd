@@ -1,0 +1,195 @@
+---
+title: "Practica7"
+author: "Irene Mendoza"
+date: "30 de mayo de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+####Practica 7. Visualizacion de redes
+
+En esta practica veremos algunos ejemplos de herramientas para la representacion grafica de redes ecológicas en R con los paquetes bipartite, igraph y networkD3. Empezamos cargando los paquetes necesarios
+
+```{r pckgs, warning = F, message = F}
+library(bipartite)
+library(tidyverse)
+library(igraph)
+library(rgl)
+library(networkD3)
+library(reshape2)
+library(webshot)
+```
+
+## Working with data from Guadarrama
+```{r data.import}
+df <- read.delim("List_interactions.txt") 
+# http://dx.doi.org/10.5061/dryad.p869n (Lara-Romero et al. 2016).
+
+#Elegimos los datos de nevero de pasto
+
+df.nev <- df %>% filter(Habitat.type == "Pasture", Study.site == "nevero") %>% droplevels()
+
+web = matrix(table(df.nev$Plant, df.nev$Insect), nrow = length(levels(df.nev$Plant)), ncol = length(levels(df.nev$Insect)))
+
+rownames(web) = levels(df.nev$Plant)
+colnames(web) = levels(df.nev$Insect)
+
+```
+
+Visualización de redes
+
+```{r plotweb.vis, fig.height = 8, fig.width = 10}
+plotweb(web)
+plotweb(web !=0)
+
+#setting the order of species
+order.visits.lower = order(rowSums(web),decreasing = T)
+order.visits.higher = order(colSums(web),decreasing = T)
+
+plotweb(web[order.visits.lower,order.visits.higher], method="normal", text.rot=90,arrow="no") #Si escogemos method = "normal" el orden de las especies de la matriz se mantendrá en el dibujo de la red. 
+
+
+```
+
+##6.1.2. Función visweb
+La función visweb dibuja la matriz en el orden dado por la propia matriz (type="none"), en el orden de empaquetamiento de la matriz, es decir, potenciando el anidamiento (type = "nested") o al contrario, es decir, potenciando la ocupación diagonal de la matriz (type="diagonal").
+
+```{r visweb, fig.height = 6, fig.width= 8}
+par(mfrow=c(2,1))
+visweb(web, prednames=F, preynames=F,square="compartment",type="diagonal",frame=T)
+
+visweb(Safariland, prednames=F, preynames=F,square="compartment",type="diagonal",frame=T)
+
+
+```
+
+
+###Usando i-graph
+
+
+```{r igraph}
+igraph.nev <- graph_from_incidence_matrix(web)
+class(igraph.nev)
+igraph.nev
+igraph::E(igraph.nev)
+V(igraph.nev)
+
+#atributos (es una lista vacía porque no le hemos cargado los atributos todavía)
+edge_attr(igraph.nev)
+vertex_attr(igraph.nev)
+```
+Primer gráfico con igraph
+
+```{r igraphplot}
+igraph.nev<- delete_vertex_attr(igraph.nev, "color") 
+vertex_attr(igraph.nev)
+plot(igraph.nev)
+x <- vertex_attr(igraph.nev)$type #dentro del objeto igraph ya viene un listado de "type"
+trophic<-as.factor(ifelse(x == "FALSE","plant","insect"))
+colrs <- c( "yellow", "green")
+colrs<-adjustcolor(colrs, alpha.f=.8)
+V(igraph.nev)$color <- colrs[trophic]
+vertex_attr(igraph.nev)
+
+igraph.nev<- delete_vertex_attr(igraph.nev, "label") 
+vertex_attr(igraph.nev)
+plot(igraph.nev)
+plot(igraph.nev, vertex.label = NA)
+
+#para borrar atributos:
+#igraph.nev<- delete_vertex_attr(igraph.nev, "color") 
+#vertex_attr(igraph.nev)
+
+
+#le damos color a las etiquetas y las editamos
+V(igraph.nev)$label.color <- "black"
+V(igraph.nev)$label <- c(1:88) 
+V(igraph.nev)$label.cex<-rep(0.6,88)
+plot(igraph.nev) 
+
+
+```
+
+También podemos borrar el símbolo y usar directamente el nombre de las especies.
+
+```{r igraph.label}
+colrs <- c( "darkred", "blue")
+V(igraph.nev)$color <- colrs[trophic]
+plot(igraph.nev, vertex.shape = "none", vertex.label=V(igraph.nev)$name, vertex.label.color = V(igraph.nev)$color, vertex.label.font=2.5,  vertex.label.cex=.6, edge.color="gray70",  edge.width=2)
+
+
+```
+
+Otra alternativa muy interesante es modificar el tamaño del símbolo que representa las especies en función de una variable continua o categórica. Vamos a utilizar la función "degree" del paquete igraph para estimar el grado normalizado de cada especie y vamos a usarlo para fijar el tamaño de los nodos.
+
+```{r igraph.degree}
+norm.degree<- degree(igraph.nev, v = V(igraph.nev), normalized = TRUE)
+colrs <- c( "yellow", "green")
+colrs<-adjustcolor(colrs, alpha.f=.8)
+V(igraph.nev)$color <-colrs[trophic]                                                              
+V(igraph.nev)$size <- norm.degree *100 #se multiplica por 100 para conseguir mayor contraste de los puntos  
+ plot(igraph.nev)
+
+
+```
+```{r igraph.juegos, fig.height= 4, fig.width= 4}
+
+l <- layout_randomly(igraph.nev)
+head(l) 
+plot(igraph.nev, layout=l)
+
+par(mfcol=c(2,2), mar = c(2,2,1,1))  
+plot(igraph.nev, layout=layout_in_circle) 
+plot(igraph.nev, layout=layout_with_fr) 
+plot(igraph.nev, layout=layout_with_lgl) 
+plot(igraph.nev, layout=layout_with_graphopt)
+```
+Para mejorar la visualización de nuestros gráficos podemos usar la función tkplot para abrir un gráfico interactivo y mejorar manulamente la disposición de los diferentes elmentos del gráfico. El gráfico puede ser exportado en formato eps. Pero la parte más práctica es que una vez ajustado el gráfico podemos obtener las coordenadas de las especies con la función tkplot.getcoords y hacer nuestro propio gráfico con la función plot.
+
+#Modificación de enlaces
+
+```{r link modification}
+coloredge <- c(rep("red", 100), rep("blue", 85))
+E(igraph.nev)$color <-coloredge
+plot(igraph.nev)
+```
+
+```{r tkplot}
+tplot<- tkplot(igraph.nev) #tkid is the id of the tkplot that will open
+l <- tkplot.getcoords(tplot) # grab the coordinates from tkplot
+tk_close(tplot, window.close = T)
+plot(igraph.nev, layout=l)
+
+```
+```{r 3D}
+rglplot(igraph.nev, vertex.label=NA, edge.color="black",edge.size=2)
+```
+
+##networkD3
+El paquete networkD3 permite crear varios tipos de gráficos de redes en R. Nosotros vamos a explorar las posibilidades de dibujo de redes 3D.
+
+Este paquete utiliza como objeto de entrada una lista compuesta por dos objetos de la clase data.frame. El objeto links contiene la información de cada enlace y el objeto nodes contiene la información de cada nodo. Este objeto puede crearse fácilmente a partir de un objeto igraph con la función igraph_to_networkD3. Lo llamaremos netnev. El vector group clasifica los nodos para colorearlos posteriormente.
+```{r network3D}
+
+group = c(rep("Plant",length(rownames(web))),rep("Animal",length(colnames(web))))
+netnev=igraph_to_networkD3(igraph.nev,group=group,what="both")
+
+forceNetwork(Links = netnev$links, Nodes = netnev$nodes, Source = 'source',Target = 'target', NodeID = 'name', Group = 'group', zoom =TRUE,linkDistance = 20,opacity=4,linkColour="grey",charge=-30,legend=T, colourScale = JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+```
+
+Esta función permite dar grosor a los enlaces, simplemente añadiendo una columna al arreglo de datos de los enlaces con un valor para cada enlace. 
+Para obtener la información cuantitativa lo que haremos nosotros será volver a generar el objeto igraph, esta vez seleccionando el argumento "weighted=TRUE" en la función graph_from_incidence_matrix. 
+Así, al pasarlo a objeto networkd3 (netnev.w) aparecerá la columna "value" en el arreglo de datos "links".
+
+```{r network3D.weighted}
+igraph.nev.w=graph_from_incidence_matrix(web,weighted=TRUE) 
+netnev.w=igraph_to_networkD3(igraph.nev.w,group=group, what="both")
+
+forceNetwork(Links = netnev.w$links, Nodes = netnev.w$nodes, Source = 'source',Target = 'target', NodeID = 'name', Group = 'group', zoom = TRUE, linkDistance = 20,opacity=4,Value ='value',linkColour="grey",charge=-30,legend=T,colourScale =JS("d3.scaleOrdinal(d3.schemeCategory10);"))
+
+
+```
+
