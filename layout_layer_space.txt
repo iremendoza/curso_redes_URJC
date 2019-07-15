@@ -1,0 +1,5 @@
+layerID layerLabel
+1 Habitat_1
+2 Habitat_2
+3 Habitat_3
+4 Habitat_4
